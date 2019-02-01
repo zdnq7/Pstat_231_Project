@@ -1,0 +1,700 @@
+\documentclass{article}[12pt]
+\usepackage{fancyhdr} % Required for custom headers
+\usepackage{lastpage} % Required to determine the last page for the footer
+%\usepackage{extramarks} % Required for headers and footers
+\usepackage[usenames,dvipsnames]{color} % Required for custom colors
+\usepackage{graphicx} % Required to insert images
+\usepackage{listings} % Required for insertion of code
+\usepackage{courier} % Required for the courier font
+\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+\usepackage{enumerate}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{dsfont}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{amsthm} % Used for create theorems and lemmas environments
+
+%\newlength\tindent
+%\setlength{\tindent}{\parindent}
+\setlength{\parindent}{0pt}
+
+	% Margins
+	\topmargin=-0.45in
+	\evensidemargin=0in
+	\oddsidemargin=0in
+	\textwidth=6.5in
+	\textheight=9.0in
+	\headsep=0.25in
+
+% Set up the header and footer
+%\pagestyle{fancy}
+
+
+
+
+\begin{document}
+\begin{center}
+\LARGE
+\bf{Auto Insurance Claim Severity Modeling Using GLM and Classification Tree}
+\\[.2in]
+\normalsize
+by
+\\[.2in]
+Mengnan Qi (Zayden)\\
+Pstat231
+\\[.2in]
+Department of Probability and Statistics\\
+University of California, Santa Barbara
+\\[1in]
+Abstract
+\\[.2in]
+\end{center}
+Auto insurance rates are often influenced by a group of attributes such as credit score and geographic location.    
+Two response variables, claim count and claim severity are the major interests of predicting in Property and Casualty insurance. Under the same data set, the usage of generalized linear models for claim count has been done early
+this year. This paper addresses and compares classification method to linear models, both are techniques under data mining concepts.
+\\[2in]
+\begin{center}
+June, 2014
+\end{center}
+\pagebreak
+
+
+
+\section{ Introduction}\label{sec:Introduction}
+Huge amount of data is being collected and stored now because of advanced information technology. Data mining is often defined as finding hidden information in a database. Models that are created by data can be either \textbf{predictive} and 
+\textbf{descriptive}, or supervised learning and unsupervised learning. Predictive models make prediction about values of data using known results found from different data. Predictive model data mining tasks include classification, regression, time series analysis, and prediction. Descriptive models look for patterns and relationship within a data set. Unlike predictive models, descriptive models serve as a way to explore the properties of examined data, but not to predict the future. Descriptive model data mining tasks include clustering, summarization, and association rules. The body of this paper focuses on predicting claim severity, in both continuous and multi-level discrete format. 
+
+
+\section{Data Set}
+The raw data provided for the learning is auto insurance policy records from CSAA Insurance Group. There are 19 variables, including both categorical and numerical, which comprised of 1 million observations. 
+
+\begin{figure}[H]
+	\centering
+\includegraphics[width=1\columnwidth]{plots/snapshotdata.pdf} 
+	\caption{A snapshot of the raw data}
+\end{figure}
+The categorical values, which take non-numeric values, are as follows:
+
+
+\begin{itemize}
+\item 
+The marital status of the driver
+\item
+The gender of the driver
+\item
+The prior bodily injury limitations the driver had with CSAA or other carriers (both the dollar amount in thousands of coverage per person and the dollar amount in thousands of coverage per accident)
+\item
+The vehicle density of the policy territory (the number of vehicles per square mile in a given zip code)
+\item
+The type of vehicle the driver owns (refer to Figure 2)
+
+\end{itemize}
+
+
+While the numeric values in the data set include the following:
+
+\begin{itemize}
+\item
+The year the insurance policy became effective
+\item
+The physical damage limit for the PD dataset
+\item
+The number of vehicles and drivers in the policy
+\item
+The age of the driver 
+\item
+The number of driver penalty points of the individual (a point system created by CSAA; more points correlate to more vehicle tickets or accidents)
+\item
+The credit-based insurance score of the driver
+\item
+The public score of the driver (created by Lexisnexis)
+\item
+The insurance persistency of the driver (in years)
+\item
+The age of the vehicle
+\item
+The earned exposure for that record (the portion of exposures for which coverage has already been provided as of a certain point in time)
+\item
+The number of claims the driver has obtained 
+\item
+The incurred losses accumulated for the driver 
+
+\end{itemize}
+
+
+\subsection{ Modification of Categorical Data}
+Each of the categorical variables contains two or more different levels. The categorical variables that contained more than two levels are Vehicle Type (21), Car Density (61) and Prior Bodily Injury Limit (11).
+In order to reduce the amount of levels within a categorical variable, the Car Density and Vehicle Type variables are manipulated. We convert Car Density values into a numeric value by manipulating its original range form into the median of that range, and we sorted vehicle types into larger groups with similar exposures. The Vehicle Type sorting is based primarily on size for average vehicles and type for specialty vehicles.\\
+\\
+All of the categorical variables are given flags, which take either the value 1 or 0 depending on whether a condition is true or false, respectively. Some examples are:
+
+\begin{itemize}
+\item
+Whether the driver is male
+\item
+Whether the driver is single
+\item
+Whether the prior bodily injury limit is 100/300
+\item
+Whether the vehicle type is a large size vehicle
+\end{itemize}
+
+\subsection{Solutions for Bad Data}
+The raw data set contains numerous observations that have both missing and unrealistic values. A subset is taken in order to eliminate these types of data, which consist of the following conditions:
+
+\begin{itemize}
+\item
+No missing value in each observation
+\item
+No driver age younger than 16
+\item
+No vehicle age smaller than -1, which represents a new car
+
+\end{itemize}
+This results in reducing the data set to about 955,000 observations along with the original 19 variables. 
+
+\subsection{Summary of Other Variables}
+Underage driver observations are eliminated, resulting in the Driver Age ranging from 16 to 96 years old. Figure 3 displays the distribution of the insured ages, which notably shows a median of 51 as well as a large amount of drivers being 60 years of age. The subset approximately divides the insured drivers into 47\% males and 53\% females; the age distribution does not significantly vary between the two sexes. The years in which the loss severity incurred within the total allowed claims ranges from 2010 to 2012.\\
+\\
+Only 6750 of the 950,000 records incurred losses, a majority of the loss amounts are under \$10,000, with the median loss amount varying for each of the three years: \$1,935 in 2010, \$2,092 in 2011, and \$2,462 in 2012. Of the policies containing a loss, the Number of Claims was predominantly 1, whereas only 2.5\% had 2 claims and 0.15\% had 3. 
+
+\subsection{Final Subset Selected for Severity Modeling}
+When our research team modeled claim frequency, we used all claim counts including zero claims (950,000 observations). However, for claim severity models, we only decide to use non-zero incurred losses observations. In particular, we choose only the records in year 2010. 
+One of the major conclusion from claim frequency modeling was that the GLM models were not stable between consecutive years using the data set. This is saying that some predictors are unreliable for future experiences if no other explanation can be made about the unstability. Therefore, in this project with purpose of comparing GLM and Classification approach, we choose to only use the incurred losses records in 2010 because year 2010 has the most records. \\
+\\
+The year 2010 incurred losses subsets had 2850 observations with the same group of predictors. We selected 2000 observations as training set and 850 observations as testing set. The distributions of loss amount 
+and some other numeric variables are shown in figure 2 and figure 3. 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\columnwidth]{plots/hist_totloss.pdf} 
+\caption{Total Losses}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\columnwidth]{plots/all_hist.pdf} 
+\caption{Distribution of Other Major Numeric Variables}
+\end{figure}
+\section{Method: GLM and CART}
+This section discusses the idea behind generalized linear models (GLM) and classification and regression tree (CART). In particular, we want to compare GLM Gamma model with  regression tree.  Then, we
+will band incurred losses into ``low", ``medium", and ``high" cost levels, and compare GLM Multinomial model with discrete classification tree. 
+
+
+\subsection{ Genalized Linear Models}\label{sec:GLM}
+Generalized linear models consists of a wider range of models including the linear model as a special case; this results in several similarities between the basic components of both models. GLMs disregard the need for several of the assumptions that the specialized linear model case obtained, in particular the assumption of Normality. Instead, the response variable is assumed to be a member of 
+\textbf{exponential family} of distributions, and the variance is permitted to vary with the mean of distribution. In summary, GLMs have the following characteristics:
+
+\begin{enumerate}
+\item
+\textbf{Each component of $\vec{Y}$ is independent and is from one of the exponential family of distributions }
+\item
+\textbf{A linear predictor based on the predictor variables $X_{i1},\cdots,X_{i,n-1}$ is utilized, denoted by $X_i'\mathbf{\beta}$: } 
+\begin{align}
+ \mathbf{X_i'\beta}=\beta_0+\beta_1X_{i1}+\cdots+\beta_{n-1}X_{i,n-1}. \
+\end{align}	
+
+\item
+\textbf{The link function $g$ relates the linear predictor to the mean reponse:}
+\begin{align}
+ E[\vec{Y}]=g^{-1}(\mathbf{X_i'\beta)}.\
+\end{align}
+
+\end{enumerate}
+
+\subsubsection{ The Link Function}\label{sec:Link-Fxn}
+
+Linear models use data transformations in order to meet the assumptions of Normality and constant variance with the response variable. In GLMs, the link function specifies a nonlinear transformation of the predicted values in order to ensure that the distribution is within the \textbf{exponential family}, which includes a wide variety of distributions that share the same density form such as Normal, Poisson, Gamma, Binomial, and Exponential distributions. The link function must be both differentiable and monotonic (either strictly increasing or decreasing). Common link functions are:
+%
+\begin{align*}
+\text{Identity link}: &   g(x)=x, & g^{-1}(x)&=x\\
+\text{Log link}: &  g(x)= \log(x), & g^{-1}(x)&=e^{x}\\
+\text{Logit link}: &  g(x)= \log \frac{x}{(1-x)}, & g^{-1}(x)&=\frac{e^{x}}{1+e^{x}}\\
+\end{align*}
+The log link function is commonly used for Poisson, Gamma, and Normal distributions.  The Logit link function is used in the case of Binomial or other Multinomial distributions. The Gamma distribution was considered to model claim severity since the incurred losses are non-negative. 
+\subsubsection{ Exponential Family}\label{sec:Exp-Fam}
+
+The exponential family of distributions is a two-parameter family of functions defined by 
+%
+\begin{align}
+f_i(y_i, \theta_i, \phi)=\exp\{\frac{y_i\theta_i-b(\theta_i)}{a_i(\phi)}+c(y_i, \phi)\}.\
+\end{align}
+%
+where $\theta_i$ is a parameter related to the mean, and $\phi$ is a scale parameter related to the variance.  $a(\phi)$, $b(\theta)$, and $c(y,\phi)$ are functions specified in advance with the following restrictions  \cite{cas2007}:
+\begin{enumerate}
+\item
+$a(\theta)$ is positive and continuous;
+\item
+$b(\theta)$ is twice differentiable with positive second derivative; and
+\item
+$c(y,\theta)$ is independent of the parameter $\theta$.
+\end{enumerate}
+%
+$f$ is a probability density function so it always integrates to 1 over its domain. Therefore, different choices for $a(\theta)$, $b(\theta)$, and $c(y,\theta)$ define a different class of distributions and a different solution to the GLM problem. Some familiar distributions that belong to the exponential family are:
+%
+\begin{table}[!htb]
+\centering
+\begin{tabular}{|l | l | l | l |}
+\hline
+Distribution & $a(\phi)$ & $b(\theta)$ & $c(y,\phi)$ \\[0.5ex] \hline
+Normal & $\phi/\omega$ & $\theta^2/2$ & $-(y^2\omega/\phi+\text{ln}(2\pi\phi/\omega))/2$ \\
+Poisson & $\phi/\omega$ & $e^\phi$ & $\text{-ln}(y!)$ \\ 
+Gamma & $\phi/\omega$ & $\text{-ln}(-\theta)$ & $(\omega/\phi)\text{ln}(y\omega/\phi)\text{-ln}(y)-\text{ln}(\Gamma(\omega/\phi)$\\ 
+Binomial (m trials) & $\phi/\omega$ & $\text{m.ln}(1+e^\phi)$ & $\text{ln}{n\choose k}$ \\
+Inverse Gaussian & $\phi/\omega$ & $-\sqrt{-2\phi}$ & $-[\text{ln}(2\pi\phi y^3/\omega)+\omega/(\phi y)]/2$ \\
+%heading
+\hline
+\end{tabular}
+\label{table:nonlin}
+\end{table}
+It is obvious that the standard choice for $a(\theta)$ is $\phi/\omega$. Where $\omega$ is a constant prior weight that is specified in advance. For our data, we use the number of claims to be the weights.
+For records with more than 1 claims, we calculate the average incurred losses for each claim using the following formula. 
+$$ \text{Severity} = \frac{\text{Incurred Losses}} {\text{Number of Claims}}$$ 
+
+\subsection{Classification and Regression Trees (CART)}
+The goal of classification is to develop a model that maps a data item into one of several predefined classes. Once developed, the model is used to classify a new instance into one of the classes. The output can be visualized in the 
+form of decision tree. 
+
+\subsubsection{Decision Trees}
+The decision tree is most useful in classification problems. Once the tree is built, it is applied to each tuple in the database and results in a classification for that tuple. A definition of decision tree is:
+\\
+\\
+Given a database $D=\{t_1,...,t_n\}$ where $t_i=<t_{i1},...,t_{ih}>$ and the database schema contains the following attributes $\{A_1,A_2,...,A_h\}$. Also given is a set of classes $C=\{C_1,...,C_m\}$. 
+A \textbf{decision tree} or \textbf{classification tree} is a tree associated with $D$ that has the following item:
+
+\begin{itemize}
+\item
+\textbf{Root Node} -- top node in the tree that contains all observations.
+\item
+\textbf{Internal Nodes} -- non-terminal nodes (including the root node) that contain the splitting rules.
+\item
+\textbf{Leaf Nodes} -- terminal nodes that contain the final classification for a set of observations. 
+\end{itemize}
+
+Solving the classification problem using decision trees is a two-step process:
+\begin{enumerate}
+\item
+Decision tree induction: Construct a decision tree using training data.
+\item
+For each observation in testing set, apply the decision tree to determine its class. 
+\end{enumerate}
+
+\subsubsection{Advantages and Disadvantages of Decision Trees}
+Decision trees certainly are easy to use and efficient. The rules are easy to interpret and understand. They scale well for large data set because the tree size is independent of the data size. Each tuple in the data must be filtered through the tree. 
+\\
+\\
+Disadvantages also exist for decision trees. First, they do not easily handle continuous data. Second, since the decision tree is constructed from the training data, overfitting may occur, but this can be overcome via tree pruning (the process of removing redundant subtrees to achieve better performance).
+ Finally, correlations among attributes in the database are ignored by the decision trees. 
+
+\subsection{Building and Comparing Models}
+Predictive power was the primary condition used to select our model; it is defined as follows:
+
+\textbf{Predictive Power}: When tested on data in the testing set,  the model predicts reliably.
+
+We used the \texttt{glm()} function in \textbf{R} to model severity with Gamma distribution. This function provides an estimation of the coefficients for each predictor variable, including all levels in each category, standard error of estimation, and the indication of the significance of the corresponding predictor variable.\\
+\\
+\texttt{rpart()} function in \textbf{R} is the simplest way to use as tree-based methods. This function both grows a tree and computes the optimal pruning. By default, \texttt{rpart()} runs a 10-fold cross-validation and the results are stored in the \texttt{rpart()} object to allow 
+the user to choose the degree of pruning at a later stage. Note that interactions make no sense for trees, so the optimal model from GLM does not fit decision tree models. \\
+\\
+The tree construction process takes the maximum reduction in deviance over all allowed splits of all leaves, to choose the next split. (Note that for continuous variables the value depends only on the split of the ranks of the observed values, so we may take a finite set of splits.) The tree construction continues until the number of cases reaching each leaf is small (default is less than 20 in \texttt{rpart()}). 
+
+
+
+\section{Result}
+In this section, we demonstrate the GLM models and CART models including cross-validation and testing set prediction to compare the predictive power. In particular, we use Mean Squared Error (MSE) to compare numeric losses models, and 
+confusion matrix to compare categorical  losses. 
+
+\subsection{GLM Gamma with Numeric Losses}
+We first keep the incurred losses in numeric form and model them using GLM Gamma distribution. We start with all the predictors and reasonable interaction between gender and driver age. Then we use sister functions,
+\texttt{add1()} and \texttt{drop1()} with the help of Chi-Square test and check what additional predictors are necessary and what predictors are not necessary. After a series of adding and eliminating, we end up with the following R result:
+\footnotesize
+\begin{verbatim}
+> drop1(glm1, test="Chisq")
+Single term deletions
+
+Model:
+Total_Losses ~ Driver_Age + Driver_Point + RatedMarital + Driver_Gender + 
+    Credit_Score + Vehicle_Age + Driver_Point * Vehicle_Age + 
+    RatedMarital * Credit_Score + Credit_Score * Vehicle_Age
+                          Df Deviance   AIC scaled dev. Pr(>Chi)  
+<none>                         1763.2 36543                       
+Driver_Age                 1   1768.9 36546      4.2606  0.03901 *
+Driver_Gender              1   1768.9 36546      4.2537  0.03917 *
+Driver_Point:Vehicle_Age   1   1768.2 36545      3.7172  0.05386 .
+RatedMarital:Credit_Score  1   1771.5 36547      6.1485  0.01315 *
+Credit_Score:Vehicle_Age   1   1771.7 36548      6.2772  0.01223 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+\end{verbatim}
+\normalsize
+We see that no predictor is available to drop because they are all significant at 90\% level. The \texttt{add1()} requires a scope to define the additional terms to be considered. We considered all possible two-factor interactions:
+\footnotesize 
+\begin{verbatim}
+> add1(glm1, ~.^2,test="Chisq")
+Single term additions
+
+Model:
+Total_Losses ~ Driver_Age + Driver_Point + RatedMarital + Driver_Gender + 
+    Credit_Score + Vehicle_Age + Driver_Point * Vehicle_Age + 
+    RatedMarital * Credit_Score + Credit_Score * Vehicle_Age
+                           Df Deviance   AIC scaled dev. Pr(>Chi)
+<none>                          1763.2 36543                     
+Driver_Age:Driver_Point     1   1762.8 36545     0.24878   0.6179
+Driver_Age:RatedMarital     1   1763.0 36545     0.14931   0.6992
+Driver_Age:Driver_Gender    1   1762.5 36545     0.44750   0.5035
+Driver_Age:Credit_Score     1   1762.7 36545     0.35295   0.5524
+Driver_Age:Vehicle_Age      1   1763.0 36545     0.13188   0.7165
+Driver_Point:RatedMarital   1   1763.0 36545     0.09930   0.7527
+Driver_Point:Driver_Gender  1   1761.9 36544     0.89868   0.3431
+Driver_Point:Credit_Score   1   1762.9 36545     0.20851   0.6479
+RatedMarital:Driver_Gender  1   1763.0 36545     0.13030   0.7181
+RatedMarital:Vehicle_Age    1   1763.1 36545     0.06396   0.8003
+Driver_Gender:Credit_Score  1   1761.7 36544     1.06020   0.3032
+Driver_Gender:Vehicle_Age   1   1760.9 36544     1.67198   0.1960
+\end{verbatim}
+\normalsize
+We see that no more terms are significant enough to add into the model. 
+\footnotesize
+\begin{verbatim}
+
+Call:
+glm(formula = Total_Losses ~ Driver_Age + Driver_Point + RatedMarital + 
+    Driver_Gender + Credit_Score + Vehicle_Age + RatedMarital * 
+    Credit_Score + Credit_Score * Vehicle_Age, family = Gamma(link = "log"), 
+    data = pd2010.train, weights = Num_Claims)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.9112  -0.9585  -0.4559   0.1884   5.2671  
+
+Coefficients:
+                             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                 8.917e+00  3.634e-01  24.537  < 2e-16 ***
+Driver_Age                 -1.874e-03  1.664e-03  -1.927  0.06005 .  
+Driver_Point                3.781e-02  1.240e-02   3.050  0.00232 ** 
+RatedMaritalS              -9.650e-01  3.679e-01  -2.623  0.00878 ** 
+Driver_GenderM              6.372e-02  5.542e-02   1.750  0.05041 .    
+Credit_Score               -1.158e-03  4.974e-04  -2.329  0.01996 *  
+Vehicle_Age                -6.890e-02  3.321e-02  -2.075  0.03814 *  
+RatedMaritalS:Credit_Score  1.296e-03  5.094e-04   2.544  0.01104 *  
+Credit_Score:Vehicle_Age    8.868e-05  4.523e-05   1.961  0.05005 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for Gamma family taken to be 1.503178)
+
+    Null deviance: 1959.1  on 1999  degrees of freedom
+Residual deviance: 1912.4  on 1991  degrees of freedom
+AIC: 36511
+
+Number of Fisher Scoring iterations: 5
+\end{verbatim}
+\normalsize
+Therefore, we conclude the final GLM Gamma model as:
+\begin{eqnarray*}
+ E[Y] & = e^{8917e+00}+DriverAge^{-1.874e-03}+DriverPoint^{3.781e-02}+RatedMaritalS^{-9.650e-01}\\
+& +DriverGenderMale^{6.372e-02}+CreditScore^{-1.158e-03}+VehicleAge^{-6.890e-02}+\\
+& +RatedMarital*CreditScore^{1.296e-03}+CreditScore*VehicleAge^{8.868e-05}
+\end{eqnarray*}
+The estimated coefficients are at the exponent because of the log link function. 
+
+\subsubsection{GLM Gamma Cross-Validation}
+The above experiment is based on only one pair of training and testing set. To ensure the dependency of our GLM Gamma model, we use different seeds to generate another 4 pairs of training and testing sets. Then we use the above model to perform 
+\texttt{add1()} and \texttt{drop1()} function and we find that \texttt{add1()} function express consistency throughout 5 training and testing pairs, but \texttt{drop1()} express inconsistency with the interaction between credit-based insurance score and vehicle age, and interaction between driver point and vehicle age. 
+\\
+\\
+We decide to drop the interaction between driver point and vehicle age, but keep the interaction between credit-based insurance score and vehicle age. One reason is because in reality, people with higher credit score tend to be more financial stable, and therefore they have the ability to get newer cars. But we do not think there is any explanation between driver point and vehicle age. The other reason is through the cross-validation, 4 out of 5 cross-validation paris think credit-based insurance score interacting vehicle age is significant whereas only 2 out 5 cross-validation paris think driver point interacting vehicle age in significant. 
+
+\subsubsection{GLM Gamma Predictions}
+The model that we use for prediction is the following:
+\footnotesize
+\begin{verbatim}
+> summary(glm1)
+
+Call:
+glm(formula = Total_Losses ~ Driver_Age + Driver_Point + RatedMarital + 
+    Driver_Gender + Credit_Score + Vehicle_Age + RatedMarital * 
+    Credit_Score + Credit_Score * Vehicle_Age, family = Gamma(link = "log"), 
+    data = pd2010.train, weights = Num_Claims)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.9112  -0.9585  -0.4559   0.1884   5.2671  
+
+Coefficients:
+                             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                 8.917e+00  3.634e-01  24.537  < 2e-16 ***
+Driver_Age                 -1.874e-03  1.664e-03  -2.127  0.06005 .  
+Driver_Point                3.781e-02  1.240e-02   3.050  0.00232 ** 
+RatedMaritalS              -9.650e-01  3.679e-01  -2.623  0.00878 ** 
+Driver_GenderM              6.372e-02  5.542e-02   2.150  0.05041 .    
+Credit_Score               -1.158e-03  4.974e-04  -2.329  0.01996 *  
+Vehicle_Age                -6.890e-02  3.321e-02  -2.075  0.03814 *  
+RatedMaritalS:Credit_Score  1.296e-03  5.094e-04   2.544  0.01104 *  
+Credit_Score:Vehicle_Age    8.868e-05  4.523e-05   1.961  0.05005 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for Gamma family taken to be 1.503178)
+
+    Null deviance: 1959.1  on 1999  degrees of freedom
+Residual deviance: 1912.4  on 1991  degrees of freedom
+AIC: 36511
+
+Number of Fisher Scoring iterations: 5
+\end{verbatim}
+\normalsize
+The $\sqrt{MSE}$ for this model is 3559.825.
+
+\subsection{Regression Tree}
+As pointed out in section 3. Regression tree does not easily handle continuous response. After applying the the regression tree method using \texttt{rpart()}, the optimal tree size is 1, which is no split at all. 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\columnwidth]{plots/regress_cp.pdf} 
+\caption{Plot by plotcp of the rpart}
+\end{figure}
+In the plot, cp helps find the model with the best tradeoff between fewest nodes and smallest error. In other words, we take the leftmost pruning point with value below the line as optimal. However, for this data set, the best cp 
+corresponds to a tree size of 1 (no split). 
+For demonstration purpose, we continue to prune the tree using the last point below the line in the $cp$ plot. 
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\columnwidth]{plots/newregree_tree_p.png} 
+\caption{Regression Tree Example}
+\end{figure}
+The tree selected by \texttt{rpart()} is much more complex than the example shown above. This make sense because we use continuous incurred loss. For comparison purpose, the $\sqrt{MSE}$ for this tree is 112529.1
+
+\subsection{GLM Multinomial}
+Now we make continuous losses into discrete form. We choose the cutoff point so that each of low, medium, and high cost group will have about the same amount of earned exposure (i.e. same total time being insured).
+We use \texttt{multinom()} from \textbf{nnet} package. This is the same as using GLM but with categorical response of more than 2 levels. The alternative is the logistic regression with multi-level response. For consistency, the predictors we 
+choose are the same from GLM Gamma models. 
+\footnotesize
+\begin{verbatim}
+> summary(multi.loss)
+Call:
+multinom(formula = Total_Losses ~ Driver_Age + Driver_Point + 
+    RatedMarital + Driver_Gender + Credit_Score + Vehicle_Age + 
+    RatedMarital * Credit_Score + Credit_Score * Vehicle_Age, 
+    data = pd2010.train, weights = Num_Claims, family = Gamma(link = "log"))
+
+Coefficients:
+       (Intercept)    Driver_Age Driver_Point RatedMaritalS Driver_GenderM Credit_Score Vehicle_Age
+medium -0.07357679  0.0003834906   0.01657077     -1.122324     0.09604939 -0.000199198  0.06221043
+high    1.38104899 -0.0025438937   0.05704569     -1.338415     0.15164041 -0.001922516 -0.09667942
+       RatedMaritalS:Credit_Score Credit_Score:Vehicle_Age
+medium                0.001723261            -7.251396e-05
+high                  0.001810640             1.443263e-04
+
+Std. Errors:
+       (Intercept)  Driver_Age Driver_Point RatedMaritalS Driver_GenderM Credit_Score Vehicle_Age
+medium 0.001484055 0.003219710   0.02667220  0.0008132313   0.0004496260 0.0002824639  0.01831979
+high   0.001518497 0.003208939   0.02488088  0.0008242134   0.0004497112 0.0002802881  0.01871756
+       RatedMaritalS:Credit_Score Credit_Score:Vehicle_Age
+medium               0.0001714038             2.873271e-05
+high                 0.0001706136             2.798627e-05
+
+Residual Deviance: 4432.275 
+AIC: 4468.275 
+\end{verbatim}
+\normalsize
+Here the deviance is comparing with the model that correctly predicts each class, not the multinomial response for each cell of the minimum model. To understand the multinomial model, we first need to take the exponent of estimated
+coefficients. For each predictors, the exponential of the coefficients represent the probability of a change in the reference group versus a change in the comparison group as the independent variable changes. For example: for 1 unit increase
+in driver age, the chance of being low cost versus the chance of being medium increases with $1:e^{0.003834906}=1.00384$ as the independent variable driver age increases. 
+
+\subsubsection{GLM Multinomial Prediction}
+The prediction method is also the same as GLM Gamma except that we will predict classes instead of numeric losses. We implement a confusion matrix to compare the predicted class and the actual class from testing set. 
+An example looks like:
+\footnotesize
+\begin{verbatim}
+        pred.mult
+         low medium high
+  low    106     71   84
+  medium 54     104  117
+  high   116     70  128
+\end{verbatim}
+\normalsize
+Where the row is the predicted class and the column is the actual class. The diagonal is the predicted correct ones. The error rate for this model is calculated as:
+$1-\frac{106+104+128}{850}=0.6024$
+The error rate is high, after checking the error rate for the other 4 pairs of training and testing set, the average error rate is about 0.48. The GLM Multinomial method predicts the correct level about half of the time. 
+
+\subsection{Discrete Classification Tree}
+The decision tree works better this time than numeric incurred losses. Figure 6 is the \texttt{rpart} cp plot that shows that the smallest size of tree with low X-val error is 11. We then prune the tree using a cp corresponding to that size. The resulting tree is shown in figure 7. 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\columnwidth]{plots/discrete_tree_cp.pdf} 
+\caption{Plot by plotcp of the rpart}
+\end{figure} 
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=1\columnwidth]{plots/dis_tree_p.png} 
+\caption{Discrete Classificaiton Tree}
+\end{figure}
+
+\subsubsection{Discrete Classification Tree Predictions}
+We also implement confusion matrix:
+\footnotesize
+\begin{verbatim}
+        pred.tree1
+         low medium high
+  low     125    26  110
+  medium  21    144  110
+  high    25    134  155
+\end{verbatim}
+\normalsize
+The error rate for this discrete tree is $1-\frac{125+144+155}{850}=0.499$, which is about the same as in GLM Multinomial model. 
+
+\subsection{Comparing}
+We use a simple table to compare $\sqrt{MSE}$ in continuous models and classification error rate in discrete models. 
+
+\begin{table}[!htb]
+\centering
+\begin{tabular}{c c}
+\hline
+& $\sqrt{MSE}$\\
+GLM Gamma & 3559.825 \\
+Regression Tree & 112529.1\\
+
+%heading
+\hline
+\end{tabular}
+\label{table:nonlin}
+\end{table}
+
+\begin{table}[!htb]
+\centering
+\begin{tabular}{c c}
+\hline
+& Classification Error\\
+GLM Multinomial & 0.485 \\
+Discrete Tree & 0.499\\
+
+%heading
+\hline
+\end{tabular}
+\label{table:nonlin}
+\end{table}
+
+\section{Results}
+We modeled incurred losses in year 2010 using 80\% training set, and predicted on the 20\% testing set. GLM Gamma and regression tree were applied to numeric incurred losses, whereas GLM Multinomial and discrete tree were applied to 3-level discrete incurred losses. Since classification trees do not easily handle continuous data, regression trees did not predict well comparing to GLM models. Using simple drop and add selection, we selected a final GLM model including some interactions. When modeling discrete loss levels, GLM and classification predicted at approximately same error rate. 
+
+\section{Future Works}
+Generalized linear models has been increased usage among actuaries primarily in traditional ratemaking applications. More sophisticated variable selection method such as regularization (also called shrinkage) has applied to healthcare modeling. Note that GLM indeed is parametric, we have to choose the appropriate family distribution depending on our response variable distribution. With more insurance data, we may apply other data ming techniques such as clustering to explore more methods other than GLM, some of the methods are convenient because non-parametric property--we do not have to assume distributions of response. 
+
+\section{Reference}
+1. Daniela Witten,Gareth James, Trevor Hastie, Robert Tibshirani, 2013. \emph{An Introduction
+to Statistical
+Learning
+with Applications in R}, Springer.\\
+\\
+2. Duncan Anderson, Sholom Feldblum, Claudine Modlin, Doris Schirmacher, Ernesto Schirmacher, and Neeza Thandi, 2007. \emph{A Practitioner's Guide to Generalized Linear Models}, Casualty Actuary Society, Arlington, Virginia.\\
+\\
+3. Margaret H. Dunham, 2002. \emph{Data Ming Introductory and Advanced Topics}, Pearson Education inc..\\
+\\
+4. John Fox, 2008. \emph{Applied Regression Analysis and Generalized Linear Models}, SAGE Publication Inc., Thousand Oaks, CA.\\
+\\
+5. W. N. Venables and B. D. Ripley, 2002. \emph{Modern Applied Statistics with S}, Springer.
+
+\section{Appendix--R Code}
+\scriptsize
+\begin{verbatim}
+# pre prosessing
+sb5<-subset(pd, pd$Total_Losses!="" & pd$Veh_Type_Symbol!="")
+sb4<-subset(sb5, sb5$Car_Density!="" & sb5$Prior_BILimit!="")
+sb1<-subset(sb4, sb4$Public_Score!="" & sb4$Credit_Score!="")
+sb1$Driver_Age<-as.numeric(as.character(sb1$Driver_Age))
+sb11<-subset(sb1, sb1$Driver_Age>=16 & sb1$Vehicle_Age>=-1)
+sb<-na.omit(data.frame(sb11))
+str(sb)
+# final data subset
+cost.pd2010<-subset(sb, Total_Losses>0 & Year=="2010")
+
+###################
+# start from here #
+###################
+load("pd2010losses.RData")
+# discrete the Total_Losses #
+cost.pd2010$Total_Losses<-cut(cost.pd2010$Total_Losses, 
+                              breaks=c(0,1200,2700,Inf),
+                              labels=c("low","medium","high"))
+# training and testing sets #
+set.seed(130)
+train<-sample(1:nrow(cost.pd2010),2000)
+pd2010.train<-cost.pd2010[train,]
+pd2010.test<-cost.pd2010[-train,]
+
+# starting regression tree
+library("rpart")
+# classification tree #
+tree2<-rpart(Total_Losses~PD_Limit+Driver_Age+
+              Driver_Point+RatedMarital+Driver_Gender+
+              Credit_Score+Public_Score+Insurance_Persistency+
+              Car_Density+Vehicle_Age,
+             weights=Num_Claims,data=pd2010.train,
+            control = rpart.control(cp=0.001))
+print(tree2,cp=0.001)
+printcp(tree2)
+plotcp(tree2)
+summary(tree2)
+tree2.1 <- prune(tree2, cp = 0.0043)
+
+plot(tree2.1, branch = 0.6, compress = T, uniform = T)
+text(tree2.1, digits = 3, all = T, use.n = T)
+# prediction discrete tree #
+pred.tree1<-predict(tree2.1, newdata=pd2010.test, type="class");summary(pred.tree1)
+table(pd2010.test$Total_Losses,pred.tree1)
+
+# regression tree #
+tree1<-rpart(Total_Losses~PD_Limit+Driver_Age+
+               Driver_Point+RatedMarital+Driver_Gender+
+               Credit_Score+Public_Score+Insurance_Persistency+
+               Car_Density+Vehicle_Age,
+             weights=Num_Claims,data=pd2010.train,method="anova",
+             cp=0.001)
+summary(tree1)
+printcp(tree1)
+plot(tree1)
+plotcp(tree1)
+text(tree1,pretty=0)
+tree1.1 <- prune(tree1, cp = 0.0047719)
+plot(tree1.1, branch = 0.6, compress = T, uniform = T)
+text(tree1.1, digits = 3, all = T, use.n = T)
+plotcp(tree1.1)
+
+pred.tree2<-predict(tree1.1,newdata=pd2010.test)
+sum((pd2010.test$Total_Losses-pred.tree2)^2)
+
+# GLM
+glm1<-glm(Total_Losses~Driver_Age+
+            Driver_Point+RatedMarital+Driver_Gender+
+            Credit_Score+
+            Vehicle_Age+
+            RatedMarital*Credit_Score+Credit_Score*Vehicle_Age
+          ,weights=Num_Claims,data=pd2010.train, family=Gamma(link="log"))
+summary(glm1) 
+# model selction #
+drop1(glm1, test="Chisq")
+add1(glm1, ~.^2,test="Chisq")
+#search <- step(glm1, ~.^2)
+#search$anova
+pred.glm1<-predict.glm(glm1, newdata=pd2010.test,type="response")
+sqrt(sum((pd2010.test$Total_Losses-pred.glm1)^2)/850)
+
+# multinominal model
+library(nnet)
+multi.loss<-multinom(Total_Losses~Driver_Age+
+                       Driver_Point+RatedMarital+Driver_Gender+
+                       Credit_Score+
+                       Vehicle_Age+
+                       RatedMarital*Credit_Score+Credit_Score*Vehicle_Age
+                     ,weights=Num_Claims,data=pd2010.train, family=Gamma(link="log"))
+drop1(multi.loss,test="Chisq")
+summary(multi.loss) 
+pred.mult<-predict(multi.loss, newdata=pd2010.test, type="class")
+table(pd2010.test$Total_Losses, pred.mult)
+
+
+
+\end{verbatim}
+\normalsize
+\end{document}\\
